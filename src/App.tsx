@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { TitleBar, CalculatorMode } from "./components/TitleBar";
+import { LeftUtilityRail } from "./components/LeftUtilityRail";
 import { StandardCalculator } from "./components/StandardCalculator";
 import { ScientificCalculator } from "./components/ScientificCalculator";
 import { ProgrammerCalculator } from "./components/ProgrammerCalculator";
 import { ConverterScreen } from "./components/ConverterScreen";
 import { DateCalculator } from "./components/DateCalculator";
-import { HistoryDrawer } from "./components/HistoryDrawer";
+import { HistorySidecar } from "./components/HistorySidecar";
 import { Toaster, toast } from "sonner";
 import {
   getStoredHistory,
@@ -32,6 +33,20 @@ export default function App() {
   const [isCompact, setIsCompact] = useState(false);
   const [wordSize, setWordSize] = useState<WordSize>("QWORD");
   const [angleMode, setAngleMode] = useState<AngleMode>("deg");
+  const [activeDisplayVal, setActiveDisplayVal] = useState("0");
+
+  // Track responsive wide-screen layout (Pro Studio 3-Zone Breakpoint)
+  const [isWideScreen, setIsWideScreen] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 840 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsWideScreen(window.innerWidth >= 840);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Load initial settings and history
   useEffect(() => {
@@ -45,7 +60,6 @@ export default function App() {
     setHistory(getStoredHistory());
     setMemory(getStoredMemory());
 
-    // Apply theme
     applyThemeClass(s.theme);
   }, []);
 
@@ -77,9 +91,7 @@ export default function App() {
     saveSettings({ alwaysOnTop: nextVal });
     try {
       await invoke("set_always_on_top", { alwaysOnTop: nextVal });
-    } catch {
-      // In web preview fallback
-    }
+    } catch {}
   };
 
   const handleToggleCompact = async () => {
@@ -87,9 +99,7 @@ export default function App() {
     setIsCompact(nextVal);
     try {
       await invoke("set_compact_mode", { compact: nextVal });
-    } catch {
-      // In web preview fallback
-    }
+    } catch {}
   };
 
   const handleSaveHistory = useCallback(
@@ -125,10 +135,10 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-background text-foreground select-none overflow-hidden relative font-sans">
+    <div className="flex flex-col h-screen w-screen bg-background text-foreground select-none overflow-hidden relative font-sans fluent-mica">
       <Toaster position="top-center" richColors theme={theme === "dark" ? "dark" : "light"} />
 
-      {/* Modern Fluent Window TitleBar */}
+      {/* Modern Fluent Window TitleBar with Fullscreen Toggle */}
       <TitleBar
         currentMode={currentMode}
         onSelectMode={(m) => setCurrentMode(m)}
@@ -142,16 +152,37 @@ export default function App() {
         onToggleAlwaysOnTop={handleToggleAlwaysOnTop}
         isCompact={isCompact}
         onToggleCompact={handleToggleCompact}
+        isWideScreen={isWideScreen}
       />
 
-      {/* Main Workspace Area */}
+      {/* Main Responsive 3-Zone Workspace */}
       <div className="flex-1 flex overflow-hidden relative">
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Zone 1: Left Utility Navigation Rail (visible on Pro Studio / Wide Screen) */}
+        {isWideScreen && !isCompact && (
+          <LeftUtilityRail
+            currentMode={currentMode}
+            onSelectMode={(m) => setCurrentMode(m)}
+            onInsertConstant={(val, sym) => {
+              toast.info(`Inserted constant ${sym} = ${val}`);
+            }}
+          />
+        )}
+
+        {/* Zone 2: Center Pro Command Deck (Ergonomically Constrained & Centered) */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
           {currentMode === "standard" && (
             <StandardCalculator
               onSaveHistory={handleSaveHistory}
               memory={memory}
               onUpdateMemory={handleUpdateMemory}
+              isWideScreen={isWideScreen && !isCompact}
+              angleMode={angleMode}
+              onToggleAngleMode={() => {
+                const next = angleMode === "deg" ? "rad" : "deg";
+                setAngleMode(next);
+                saveSettings({ angleUnit: next });
+              }}
+              onDisplayChange={setActiveDisplayVal}
             />
           )}
 
@@ -177,6 +208,8 @@ export default function App() {
                 setWordSize(ws);
                 saveSettings({ wordSize: ws });
               }}
+              isWideScreen={isWideScreen && !isCompact}
+              onDisplayChange={setActiveDisplayVal}
             />
           )}
 
@@ -185,19 +218,22 @@ export default function App() {
           {currentMode === "date" && <DateCalculator />}
         </div>
 
-        {/* History and Memory Drawer */}
-        <HistoryDrawer
-          isOpen={historyOpen}
-          onClose={() => setHistoryOpen(false)}
-          history={history}
-          onClearHistory={handleClearHistory}
-          onDeleteHistoryItem={handleDeleteHistoryItem}
-          memory={memory}
-          onClearMemory={handleClearMemory}
-          onSelectHistoryResult={(res) => {
-            toast.success(`Copied "${res}" to clipboard`);
-          }}
-        />
+        {/* Zone 3: Right Calculation Tape & Memory Sidecar (Persistent in Wide, Drawer in Compact) */}
+        {(isWideScreen && !isCompact) || historyOpen ? (
+          <HistorySidecar
+            history={history}
+            onClearHistory={handleClearHistory}
+            onDeleteHistoryItem={handleDeleteHistoryItem}
+            memory={memory}
+            onClearMemory={handleClearMemory}
+            isPersistent={isWideScreen && !isCompact}
+            onClose={() => setHistoryOpen(false)}
+            activeDisplayValue={activeDisplayVal}
+            onUseResult={(res) => {
+              toast.success(`Copied "${res}" to clipboard`);
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

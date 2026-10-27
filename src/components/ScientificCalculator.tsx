@@ -461,7 +461,7 @@ export function ScientificCalculator({
         <Button variant="number" size="keypad" onClick={() => inputDigit("0")}>
           0
         </Button>
-        <Button variant="accent" size="keypad" onClick={handleEquals}>
+        <Button variant="equals" size="keypad" onClick={handleEquals}>
           <Equal className="size-4" />
         </Button>
       </div>

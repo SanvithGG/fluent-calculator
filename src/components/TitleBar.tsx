@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calculator,
   Binary,
@@ -19,6 +19,8 @@ import {
   Minimize2,
   Maximize2,
   ChevronDown,
+  Expand,
+  Shrink,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "./ui/button";
@@ -43,6 +45,7 @@ interface TitleBarProps {
   onToggleAlwaysOnTop: () => void;
   isCompact: boolean;
   onToggleCompact: () => void;
+  isWideScreen?: boolean;
 }
 
 export function TitleBar({
@@ -58,29 +61,43 @@ export function TitleBar({
   onToggleAlwaysOnTop,
   isCompact,
   onToggleCompact,
+  isWideScreen,
 }: TitleBarProps) {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
 
-  // Check window maximized state
+  // Check window maximized & fullscreen state
   useEffect(() => {
-    async function checkMaximized() {
+    async function checkState() {
       try {
         const max = await invoke<boolean>("is_window_maximized");
         setIsMaximized(max);
-      } catch {
-        // Fallback in web preview
-      }
+      } catch {}
+      try {
+        const fs = await invoke<boolean>("is_window_fullscreen");
+        setIsFullscreen(fs);
+      } catch {}
     }
-    checkMaximized();
+    checkState();
+  }, []);
+
+  // Listen for F11 full screen shortcut
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.key === "F11") {
+        e.preventDefault();
+        handleToggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleMinimize = async () => {
     try {
       await invoke("minimize_window");
-    } catch {
-      // In web preview ignore
-    }
+    } catch {}
   };
 
   const handleToggleMaximize = async () => {
@@ -89,6 +106,15 @@ export function TitleBar({
       setIsMaximized(max);
     } catch {
       setIsMaximized(!isMaximized);
+    }
+  };
+
+  const handleToggleFullscreen = async () => {
+    try {
+      const fs = await invoke<boolean>("toggle_fullscreen");
+      setIsFullscreen(fs);
+    } catch {
+      setIsFullscreen(!isFullscreen);
     }
   };
 
@@ -113,17 +139,17 @@ export function TitleBar({
   return (
     <div
       data-tauri-drag-region
-      className="flex h-10 w-full items-center justify-between border-b border-border/40 bg-background/80 px-2 select-none z-50 backdrop-blur-md"
+      className="flex h-11 w-full items-center justify-between border-b border-border/40 bg-background/85 px-3 select-none z-50 backdrop-blur-xl"
     >
       {/* Left: Mode Picker */}
       <div className="relative flex items-center gap-1.5" data-tauri-drag-region>
         <button
           onClick={() => setModeMenuOpen(!modeMenuOpen)}
-          className="flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors"
+          className="flex items-center gap-2 rounded-lg px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors border border-border/40 shadow-xs"
           title="Switch calculator mode"
         >
           <span className="text-primary">{currentModeObj.icon}</span>
-          <span className="truncate max-w-[120px]">{currentModeObj.label}</span>
+          <span className="truncate">{currentModeObj.label}</span>
           <ChevronDown className="size-3 text-muted-foreground opacity-70" />
         </button>
 
@@ -133,7 +159,7 @@ export function TitleBar({
               className="fixed inset-0 z-40"
               onClick={() => setModeMenuOpen(false)}
             />
-            <div className="absolute top-8 left-0 z-50 w-48 rounded-xl border border-border/80 bg-popover/95 p-1.5 shadow-xl backdrop-blur-lg animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute top-9 left-0 z-50 w-52 rounded-xl border border-border/80 bg-popover/95 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
               <div className="px-2 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Calculator Modes
               </div>
@@ -144,9 +170,9 @@ export function TitleBar({
                     onSelectMode(m.id);
                     setModeMenuOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs transition-colors ${
                     currentMode === m.id
-                      ? "bg-primary text-primary-foreground font-semibold"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                       : "text-foreground hover:bg-muted"
                   }`}
                 >
@@ -157,13 +183,32 @@ export function TitleBar({
             </div>
           </>
         )}
+
+        {isWideScreen && (
+          <span className="hidden md:inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+            Pro Studio View
+          </span>
+        )}
       </div>
 
       {/* Middle Drag Region */}
-      <div className="flex-1 h-full flex items-center justify-center text-xs text-muted-foreground/40 font-medium" data-tauri-drag-region />
+      <div className="flex-1 h-full flex items-center justify-center" data-tauri-drag-region />
 
       {/* Right: Quick actions & Window Controls */}
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-1">
+        {/* Full Screen Mode Toggle */}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleToggleFullscreen}
+          className={`h-7 w-7 transition-colors ${
+            isFullscreen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
+          }`}
+          title={isFullscreen ? "Exit Fullscreen (F11)" : "Enter Fullscreen (F11)"}
+        >
+          {isFullscreen ? <Shrink className="size-3.5" /> : <Expand className="size-3.5" />}
+        </Button>
+
         {/* Compact Mode Toggle */}
         <Button
           variant="ghost"
@@ -190,20 +235,22 @@ export function TitleBar({
           {isAlwaysOnTop ? <Pin className="size-3.5 fill-current" /> : <PinOff className="size-3.5" />}
         </Button>
 
-        {/* History Toggle */}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onToggleHistory}
-          className={`h-7 w-7 transition-colors ${
-            historyOpen
-              ? "text-primary bg-primary/10 hover:bg-primary/20"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-          title="Calculation History & Memory"
-        >
-          <History className="size-3.5" />
-        </Button>
+        {/* History Toggle (in compact mode) */}
+        {!isWideScreen && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onToggleHistory}
+            className={`h-7 w-7 transition-colors ${
+              historyOpen
+                ? "text-primary bg-primary/10 hover:bg-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Calculation History & Memory"
+          >
+            <History className="size-3.5" />
+          </Button>
+        )}
 
         {/* Sound Toggle */}
         <Button
@@ -227,7 +274,7 @@ export function TitleBar({
           {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
         </Button>
 
-        {/* Native Windows Window Controls */}
+        {/* Native Windows Controls */}
         <div className="ml-1 flex items-center">
           <button
             onClick={handleMinimize}

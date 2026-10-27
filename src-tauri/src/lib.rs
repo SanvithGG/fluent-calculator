@@ -23,6 +23,18 @@ fn is_window_maximized(window: WebviewWindow) -> Result<bool, String> {
 }
 
 #[tauri::command]
+fn toggle_fullscreen(window: WebviewWindow) -> Result<bool, String> {
+    let is_fs = window.is_fullscreen().map_err(|e| e.to_string())?;
+    window.set_fullscreen(!is_fs).map_err(|e| e.to_string())?;
+    Ok(!is_fs)
+}
+
+#[tauri::command]
+fn is_window_fullscreen(window: WebviewWindow) -> Result<bool, String> {
+    window.is_fullscreen().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn close_window(window: WebviewWindow) -> Result<(), String> {
     window.close().map_err(|e| e.to_string())
 }
@@ -54,6 +66,8 @@ pub fn run() {
             minimize_window,
             toggle_maximize,
             is_window_maximized,
+            toggle_fullscreen,
+            is_window_fullscreen,
             close_window,
             set_always_on_top,
             set_compact_mode

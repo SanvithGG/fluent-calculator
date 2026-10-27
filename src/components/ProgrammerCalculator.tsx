@@ -12,7 +12,7 @@ import {
   toggleBitAt,
 } from "@/lib/calculator-engine";
 import { playKeyClick } from "@/lib/sound";
-import { Delete, Divide, Plus, Minus, X, Equal } from "lucide-react";
+import { Delete, Divide, Plus, Minus, X, Equal, Copy, Check } from "lucide-react";
 
 export type NumberBase = "HEX" | "DEC" | "OCT" | "BIN";
 
@@ -20,12 +20,16 @@ interface ProgrammerCalculatorProps {
   onSaveHistory: (expr: string, res: string) => void;
   wordSize: WordSize;
   onChangeWordSize: (ws: WordSize) => void;
+  isWideScreen?: boolean;
+  onDisplayChange?: (val: string) => void;
 }
 
 export function ProgrammerCalculator({
   onSaveHistory,
   wordSize,
   onChangeWordSize,
+  isWideScreen = false,
+  onDisplayChange,
 }: ProgrammerCalculatorProps) {
   const [currentVal, setCurrentVal] = useState<bigint>(0n);
   const [activeBase, setActiveBase] = useState<NumberBase>("DEC");
@@ -33,6 +37,7 @@ export function ProgrammerCalculator({
   const [prevVal, setPrevVal] = useState<bigint | null>(null);
   const [pendingOp, setPendingOp] = useState<string | null>(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const click = (type: "number" | "operator" | "equals" | "clear" | "action" = "number") => {
     playKeyClick(type);
@@ -46,7 +51,7 @@ export function ProgrammerCalculator({
   const octStr = useMemo(() => formatOct(currentVal, wordSize), [currentVal, wordSize]);
   const binStr = useMemo(() => formatBin(currentVal, wordSize), [currentVal, wordSize]);
 
-  // Main display value based on selected base
+  // Primary display string
   const primaryDisplay = useMemo(() => {
     switch (activeBase) {
       case "HEX":
@@ -60,7 +65,13 @@ export function ProgrammerCalculator({
     }
   }, [activeBase, hexStr, decStr, octStr, binStr]);
 
-  // Input a character (0-9, A-F) in the current base
+  // Sync to parent
+  useMemo(() => {
+    if (onDisplayChange) {
+      onDisplayChange(decStr);
+    }
+  }, [decStr, onDisplayChange]);
+
   const inputChar = useCallback(
     (char: string) => {
       click("number");
@@ -82,12 +93,16 @@ export function ProgrammerCalculator({
 
       try {
         const parsed = BigInt(
-          baseRadix === 16 ? "0x" + currentStr : baseRadix === 8 ? "0o" + currentStr : baseRadix === 2 ? "0b" + currentStr : currentStr
+          baseRadix === 16
+            ? "0x" + currentStr
+            : baseRadix === 8
+            ? "0o" + currentStr
+            : baseRadix === 2
+            ? "0b" + currentStr
+            : currentStr
         );
         setCurrentVal(maskBigIntToWordSize(parsed, wordSize));
-      } catch {
-        // invalid parsing, ignore
-      }
+      } catch {}
     },
     [activeBase, currentVal, waitingForOperand, wordSize]
   );
@@ -104,7 +119,13 @@ export function ProgrammerCalculator({
     if (currentStr.length > 1) {
       const sliced = currentStr.slice(0, -1);
       const parsed = BigInt(
-        baseRadix === 16 ? "0x" + sliced : baseRadix === 8 ? "0o" + sliced : baseRadix === 2 ? "0b" + sliced : sliced
+        baseRadix === 16
+          ? "0x" + sliced
+          : baseRadix === 8
+          ? "0o" + sliced
+          : baseRadix === 2
+          ? "0b" + sliced
+          : sliced
       );
       setCurrentVal(maskBigIntToWordSize(parsed, wordSize));
     } else {
@@ -215,97 +236,100 @@ export function ProgrammerCalculator({
     }
   };
 
-  // Check if a keypad button is valid in active base
   const isKeyValid = (key: string): boolean => {
-    if (activeBase === "BIN") {
-      return key === "0" || key === "1";
-    }
-    if (activeBase === "OCT") {
-      return key >= "0" && key <= "7";
-    }
-    if (activeBase === "DEC") {
-      return key >= "0" && key <= "9";
-    }
-    // HEX
+    if (activeBase === "BIN") return key === "0" || key === "1";
+    if (activeBase === "OCT") return key >= "0" && key <= "7";
+    if (activeBase === "DEC") return key >= "0" && key <= "9";
     return (key >= "0" && key <= "9") || (key >= "A" && key <= "F");
   };
 
   const wordSizes: WordSize[] = ["QWORD", "DWORD", "WORD", "BYTE"];
 
   return (
-    <div className="flex flex-col h-full w-full justify-between p-3 gap-2">
-      {/* Primary Display */}
-      <div className="flex flex-col items-end justify-end px-3 py-2 min-h-[70px] rounded-xl bg-card/60 border border-border/50 shadow-sm backdrop-blur-md">
-        <div className="h-4 text-[11px] text-muted-foreground font-mono truncate max-w-full">
-          {expression}
+    <div className="flex flex-col h-full w-full justify-between p-3 sm:p-5 gap-3 max-w-5xl mx-auto">
+      {/* Display Card */}
+      <div className="flex flex-col items-end justify-end px-4 py-3 min-h-[90px] sm:min-h-[105px] rounded-2xl bg-card/70 border border-border/60 shadow-lg backdrop-blur-2xl relative overflow-hidden group">
+        <div className="flex w-full items-center justify-between text-xs text-muted-foreground font-mono">
+          <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20">
+            {activeBase} • {wordSize}
+          </span>
+          <span className="truncate max-w-[70%]">{expression}</span>
         </div>
-        <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate max-w-full font-mono">
-          {primaryDisplay}
+        <div className="w-full flex items-center justify-between mt-1">
+          <button
+            onClick={() => {
+              click("action");
+              navigator.clipboard.writeText(primaryDisplay);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted/60"
+            title="Copy value"
+          >
+            {copied ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
+          </button>
+          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground truncate font-mono text-right">
+            {primaryDisplay}
+          </div>
         </div>
       </div>
 
-      {/* Real-time Base Selectors (HEX, DEC, OCT, BIN) */}
-      <div className="flex flex-col gap-1 rounded-xl bg-muted/30 p-1.5 border border-border/40 text-xs font-mono">
-        <button
-          onClick={() => setActiveBase("HEX")}
-          className={`flex items-center justify-between px-2 py-1 rounded-md transition-colors ${
-            activeBase === "HEX" ? "bg-primary/15 text-primary font-bold" : "hover:bg-muted text-muted-foreground"
-          }`}
-        >
-          <span className="w-8 font-semibold">HEX</span>
-          <span className="truncate">{hexStr}</span>
-        </button>
-        <button
-          onClick={() => setActiveBase("DEC")}
-          className={`flex items-center justify-between px-2 py-1 rounded-md transition-colors ${
-            activeBase === "DEC" ? "bg-primary/15 text-primary font-bold" : "hover:bg-muted text-muted-foreground"
-          }`}
-        >
-          <span className="w-8 font-semibold">DEC</span>
-          <span className="truncate">{decStr}</span>
-        </button>
-        <button
-          onClick={() => setActiveBase("OCT")}
-          className={`flex items-center justify-between px-2 py-1 rounded-md transition-colors ${
-            activeBase === "OCT" ? "bg-primary/15 text-primary font-bold" : "hover:bg-muted text-muted-foreground"
-          }`}
-        >
-          <span className="w-8 font-semibold">OCT</span>
-          <span className="truncate">{octStr}</span>
-        </button>
-        <button
-          onClick={() => setActiveBase("BIN")}
-          className={`flex items-center justify-between px-2 py-1 rounded-md transition-colors ${
-            activeBase === "BIN" ? "bg-primary/15 text-primary font-bold" : "hover:bg-muted text-muted-foreground"
-          }`}
-        >
-          <span className="w-8 font-semibold">BIN</span>
-          <span className="truncate text-[10px] tracking-wider">{binStr}</span>
-        </button>
-      </div>
-
-      {/* Word Size & Bit Toggler Controls */}
-      <div className="flex items-center justify-between gap-1 text-[11px]">
-        <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-lg border border-border/40">
-          {wordSizes.map((ws) => (
+      {/* Real-time Base Selector Bar (HEX, DEC, OCT, BIN) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl bg-card/40 p-2 border border-border/40 text-xs font-mono backdrop-blur-md">
+        {(["HEX", "DEC", "OCT", "BIN"] as NumberBase[]).map((base) => {
+          const val =
+            base === "HEX" ? hexStr : base === "DEC" ? decStr : base === "OCT" ? octStr : binStr;
+          return (
             <button
-              key={ws}
-              onClick={() => onChangeWordSize(ws)}
-              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
-                wordSize === ws
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
+              key={base}
+              onClick={() => {
+                click("action");
+                setActiveBase(base);
+              }}
+              className={`flex flex-col p-2 rounded-lg text-left transition-all border ${
+                activeBase === base
+                  ? "bg-primary/15 border-primary/50 shadow-xs"
+                  : "bg-muted/20 border-transparent hover:bg-muted/50"
               }`}
             >
-              {ws}
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">{base}</span>
+              <span className="text-sm font-bold text-foreground truncate mt-0.5">{val}</span>
             </button>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* Word Size & 64-Bit Interactive Toggler (Expanded for Pro Studio) */}
+      <div className="flex flex-col gap-2 rounded-xl bg-card/40 p-3 border border-border/40 backdrop-blur-md">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-lg border border-border/40">
+            {wordSizes.map((ws) => (
+              <button
+                key={ws}
+                onClick={() => {
+                  click("action");
+                  onChangeWordSize(ws);
+                }}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                  wordSize === ws
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {ws}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-[10px] font-mono text-muted-foreground">
+            {bitsCount} BITS (CLICK TO FLIP)
+          </span>
         </div>
 
-        {/* Quick Bit Toggler bar (shows last 8 or 16 bits interactively) */}
-        <div className="flex items-center gap-0.5 font-mono text-[9px]">
-          {Array.from({ length: Math.min(bitsCount, 16) }).map((_, idx) => {
-            const bitIndex = Math.min(bitsCount, 16) - 1 - idx;
+        {/* 64-Bit Interactive Bit Matrix (4 rows of 16 bits in wide mode) */}
+        <div className="grid grid-cols-16 gap-1 font-mono text-[9px] pt-1">
+          {Array.from({ length: bitsCount }).map((_, idx) => {
+            const bitIndex = bitsCount - 1 - idx;
             const bitVal = getBitAt(currentVal, bitIndex);
             return (
               <button
@@ -314,14 +338,14 @@ export function ProgrammerCalculator({
                   click("operator");
                   setCurrentVal(toggleBitAt(currentVal, bitIndex, wordSize));
                 }}
-                className={`h-5 w-4 rounded-xs border text-center transition-colors ${
+                className={`h-6 rounded-md border flex flex-col items-center justify-center transition-all ${
                   bitVal === 1
-                    ? "bg-primary text-primary-foreground border-primary font-bold"
+                    ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs"
                     : "bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted"
                 }`}
-                title={`Bit ${bitIndex}: click to flip`}
+                title={`Bit ${bitIndex}`}
               >
-                {bitVal}
+                <span>{bitVal}</span>
               </button>
             );
           })}
@@ -329,7 +353,7 @@ export function ProgrammerCalculator({
       </div>
 
       {/* Programmer Keypad Grid */}
-      <div className="grid grid-cols-5 gap-1.5 flex-1">
+      <div className="grid grid-cols-6 sm:grid-cols-6 gap-2 flex-1">
         {/* Row 1: Bitwise */}
         <Button variant="action" size="keypad" onClick={() => handleBinaryOp("AND")}>
           AND
@@ -343,173 +367,108 @@ export function ProgrammerCalculator({
         <Button variant="action" size="keypad" onClick={() => handleBinaryOp("XOR")}>
           XOR
         </Button>
-        <Button variant="action" size="keypad" onClick={handleClear}>
+        <Button variant="action" size="keypad" onClick={handleClear} badge="Esc">
           C
         </Button>
+        <Button variant="action" size="keypad" onClick={handleBackspace} badge="⌫">
+          <Delete className="size-4" />
+        </Button>
 
-        {/* Row 2: Shifts */}
+        {/* Row 2: Shifts & Hex A-B */}
         <Button variant="action" size="keypad" onClick={() => handleBitwiseUnary("Lsh")}>
           Lsh
         </Button>
         <Button variant="action" size="keypad" onClick={() => handleBitwiseUnary("Rsh")}>
           Rsh
         </Button>
+        <Button variant="action" size="keypad" disabled={!isKeyValid("A")} onClick={() => inputChar("A")}>
+          A
+        </Button>
+        <Button variant="action" size="keypad" disabled={!isKeyValid("B")} onClick={() => inputChar("B")} >
+          B
+        </Button>
+        <Button variant="number" size="keypad" disabled={!isKeyValid("7")} onClick={() => inputChar("7")}>
+          7
+        </Button>
+        <Button variant="number" size="keypad" disabled={!isKeyValid("8")} onClick={() => inputChar("8")}>
+          8
+        </Button>
+
+        {/* Row 3: Hex C-D & 9, 4-6 */}
         <Button variant="action" size="keypad" onClick={() => handleBitwiseUnary("Rol")}>
           Rol
         </Button>
         <Button variant="action" size="keypad" onClick={() => handleBitwiseUnary("Ror")}>
           Ror
         </Button>
-        <Button variant="action" size="keypad" onClick={handleBackspace}>
-          <Delete className="size-4" />
-        </Button>
-
-        {/* Row 3: Hex A-B & 7-9 */}
-        <Button
-          variant="action"
-          size="keypad"
-          disabled={!isKeyValid("A")}
-          onClick={() => inputChar("A")}
-        >
-          A
-        </Button>
-        <Button
-          variant="action"
-          size="keypad"
-          disabled={!isKeyValid("B")}
-          onClick={() => inputChar("B")}
-        >
-          B
-        </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("7")}
-          onClick={() => inputChar("7")}
-        >
-          7
-        </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("8")}
-          onClick={() => inputChar("8")}
-        >
-          8
-        </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("9")}
-          onClick={() => inputChar("9")}
-        >
-          9
-        </Button>
-
-        {/* Row 4: Hex C-D & 4-6 */}
-        <Button
-          variant="action"
-          size="keypad"
-          disabled={!isKeyValid("C")}
-          onClick={() => inputChar("C")}
-        >
+        <Button variant="action" size="keypad" disabled={!isKeyValid("C")} onClick={() => inputChar("C")}>
           C
         </Button>
-        <Button
-          variant="action"
-          size="keypad"
-          disabled={!isKeyValid("D")}
-          onClick={() => inputChar("D")}
-        >
+        <Button variant="action" size="keypad" disabled={!isKeyValid("D")} onClick={() => inputChar("D")}>
           D
         </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("4")}
-          onClick={() => inputChar("4")}
-        >
-          4
+        <Button variant="number" size="keypad" disabled={!isKeyValid("9")} onClick={() => inputChar("9")}>
+          9
         </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("5")}
-          onClick={() => inputChar("5")}
-        >
-          5
-        </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("6")}
-          onClick={() => inputChar("6")}
-        >
-          6
+        <Button variant="operator" size="keypad" onClick={() => handleBinaryOp("/")}>
+          <Divide className="size-5" />
         </Button>
 
-        {/* Row 5: Hex E-F & 1-3 */}
-        <Button
-          variant="action"
-          size="keypad"
-          disabled={!isKeyValid("E")}
-          onClick={() => inputChar("E")}
-        >
+        {/* Row 4: Hex E-F & 4-6, Multiply */}
+        <Button variant="action" size="keypad" onClick={() => handleBinaryOp("NAND")}>
+          NAND
+        </Button>
+        <Button variant="action" size="keypad" onClick={() => handleBinaryOp("NOR")}>
+          NOR
+        </Button>
+        <Button variant="action" size="keypad" disabled={!isKeyValid("E")} onClick={() => inputChar("E")}>
           E
         </Button>
-        <Button
-          variant="action"
-          size="keypad"
-          disabled={!isKeyValid("F")}
-          onClick={() => inputChar("F")}
-        >
+        <Button variant="action" size="keypad" disabled={!isKeyValid("F")} onClick={() => inputChar("F")}>
           F
         </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("1")}
-          onClick={() => inputChar("1")}
-        >
-          1
+        <Button variant="number" size="keypad" disabled={!isKeyValid("4")} onClick={() => inputChar("4")}>
+          4
         </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("2")}
-          onClick={() => inputChar("2")}
-        >
-          2
-        </Button>
-        <Button
-          variant="number"
-          size="keypad"
-          disabled={!isKeyValid("3")}
-          onClick={() => inputChar("3")}
-        >
-          3
+        <Button variant="number" size="keypad" disabled={!isKeyValid("5")} onClick={() => inputChar("5")}>
+          5
         </Button>
 
-        {/* Row 6: Arithmetic & Zero */}
-        <Button variant="operator" size="keypad" onClick={() => handleBinaryOp("+")}>
-          <Plus className="size-4" />
-        </Button>
-        <Button variant="operator" size="keypad" onClick={() => handleBinaryOp("-")}>
-          <Minus className="size-4" />
+        {/* Row 5: 6, 1-3, Subtract, Add */}
+        <Button variant="number" size="keypad" disabled={!isKeyValid("6")} onClick={() => inputChar("6")}>
+          6
         </Button>
         <Button variant="operator" size="keypad" onClick={() => handleBinaryOp("*")}>
-          <X className="size-4" />
+          <X className="size-5" />
         </Button>
+        <Button variant="number" size="keypad" disabled={!isKeyValid("1")} onClick={() => inputChar("1")}>
+          1
+        </Button>
+        <Button variant="number" size="keypad" disabled={!isKeyValid("2")} onClick={() => inputChar("2")}>
+          2
+        </Button>
+        <Button variant="number" size="keypad" disabled={!isKeyValid("3")} onClick={() => inputChar("3")}>
+          3
+        </Button>
+        <Button variant="operator" size="keypad" onClick={() => handleBinaryOp("-")}>
+          <Minus className="size-5" />
+        </Button>
+
+        {/* Row 6: Zero & Operators & Equals */}
         <Button
           variant="number"
           size="keypad"
           disabled={!isKeyValid("0")}
           onClick={() => inputChar("0")}
+          className="col-span-2"
         >
           0
         </Button>
-        <Button variant="accent" size="keypad" onClick={handleEquals}>
-          <Equal className="size-4" />
+        <Button variant="operator" size="keypad" onClick={() => handleBinaryOp("+")} className="col-span-2">
+          <Plus className="size-5" />
+        </Button>
+        <Button variant="equals" size="keypad" onClick={handleEquals} className="col-span-2" badge="Enter">
+          <Equal className="size-5" />
         </Button>
       </div>
     </div>
