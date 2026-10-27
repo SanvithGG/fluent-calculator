@@ -48,11 +48,10 @@ fn set_always_on_top(window: WebviewWindow, always_on_top: bool) -> Result<bool,
 #[tauri::command]
 fn set_compact_mode(window: WebviewWindow, compact: bool) -> Result<(), String> {
     if compact {
-        let size = tauri::LogicalSize::new(320.0, 480.0);
+        let size = tauri::LogicalSize::new(360.0, 620.0);
         window.set_size(tauri::Size::Logical(size)).map_err(|e| e.to_string())?;
-        window.set_always_on_top(true).map_err(|e| e.to_string())?;
     } else {
-        let size = tauri::LogicalSize::new(420.0, 680.0);
+        let size = tauri::LogicalSize::new(1120.0, 750.0);
         window.set_size(tauri::Size::Logical(size)).map_err(|e| e.to_string())?;
     }
     Ok(())

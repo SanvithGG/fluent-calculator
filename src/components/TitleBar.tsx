@@ -13,14 +13,11 @@ import {
   Volume2,
   VolumeX,
   Minus,
-  Square,
-  Copy,
   X,
-  Minimize2,
-  Maximize2,
-  ChevronDown,
+  Smartphone,
   Expand,
   Shrink,
+  ChevronDown,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "./ui/button";
@@ -63,17 +60,12 @@ export function TitleBar({
   onToggleCompact,
   isWideScreen,
 }: TitleBarProps) {
-  const [isMaximized, setIsMaximized] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
 
-  // Check window maximized & fullscreen state
+  // Check window fullscreen state
   useEffect(() => {
     async function checkState() {
-      try {
-        const max = await invoke<boolean>("is_window_maximized");
-        setIsMaximized(max);
-      } catch {}
       try {
         const fs = await invoke<boolean>("is_window_fullscreen");
         setIsFullscreen(fs);
@@ -92,21 +84,12 @@ export function TitleBar({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isFullscreen]);
 
   const handleMinimize = async () => {
     try {
       await invoke("minimize_window");
     } catch {}
-  };
-
-  const handleToggleMaximize = async () => {
-    try {
-      const max = await invoke<boolean>("toggle_maximize");
-      setIsMaximized(max);
-    } catch {
-      setIsMaximized(!isMaximized);
-    }
   };
 
   const handleToggleFullscreen = async () => {
@@ -142,7 +125,7 @@ export function TitleBar({
       className="flex h-11 w-full items-center justify-between border-b border-border/40 bg-background/85 px-3 select-none z-50 backdrop-blur-xl"
     >
       {/* Left: Mode Picker */}
-      <div className="relative flex items-center gap-1.5" data-tauri-drag-region>
+      <div className="relative flex items-center gap-2" data-tauri-drag-region>
         <button
           onClick={() => setModeMenuOpen(!modeMenuOpen)}
           className="flex items-center gap-2 rounded-lg px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors border border-border/40 shadow-xs"
@@ -184,7 +167,7 @@ export function TitleBar({
           </>
         )}
 
-        {isWideScreen && (
+        {isWideScreen && !isCompact && (
           <span className="hidden md:inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
             Pro Studio View
           </span>
@@ -194,30 +177,36 @@ export function TitleBar({
       {/* Middle Drag Region */}
       <div className="flex-1 h-full flex items-center justify-center" data-tauri-drag-region />
 
-      {/* Right: Quick actions & Window Controls */}
-      <div className="flex items-center gap-1">
-        {/* Full Screen Mode Toggle */}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleToggleFullscreen}
-          className={`h-7 w-7 transition-colors ${
-            isFullscreen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
-          }`}
-          title={isFullscreen ? "Exit Fullscreen (F11)" : "Enter Fullscreen (F11)"}
-        >
-          {isFullscreen ? <Shrink className="size-3.5" /> : <Expand className="size-3.5" />}
-        </Button>
-
-        {/* Compact Mode Toggle */}
+      {/* Right Controls: Quick actions & Window Controls with comfortable right spacing */}
+      <div className="flex items-center gap-1.5 pr-2">
+        {/* Toggle Mobile / Compact View */}
         <Button
           variant="ghost"
           size="icon-sm"
           onClick={onToggleCompact}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          title={isCompact ? "Expand window" : "Compact mini view"}
+          className={`h-7 w-7 transition-colors rounded-lg ${
+            isCompact
+              ? "text-primary bg-primary/15 hover:bg-primary/25 font-bold"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          title={isCompact ? "Switch to Desktop View" : "Switch to Mobile View"}
         >
-          {isCompact ? <Maximize2 className="size-3.5" /> : <Minimize2 className="size-3.5" />}
+          <Smartphone className="size-3.5" />
+        </Button>
+
+        {/* Toggle Fullscreen Mode */}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleToggleFullscreen}
+          className={`h-7 w-7 transition-colors rounded-lg ${
+            isFullscreen
+              ? "text-primary bg-primary/15 hover:bg-primary/25 font-bold"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          title={isFullscreen ? "Exit Fullscreen (F11)" : "Enter Fullscreen (F11)"}
+        >
+          {isFullscreen ? <Shrink className="size-3.5" /> : <Expand className="size-3.5" />}
         </Button>
 
         {/* Always on top Pin */}
@@ -225,7 +214,7 @@ export function TitleBar({
           variant="ghost"
           size="icon-sm"
           onClick={onToggleAlwaysOnTop}
-          className={`h-7 w-7 transition-colors ${
+          className={`h-7 w-7 transition-colors rounded-lg ${
             isAlwaysOnTop
               ? "text-primary bg-primary/10 hover:bg-primary/20"
               : "text-muted-foreground hover:text-foreground"
@@ -235,13 +224,13 @@ export function TitleBar({
           {isAlwaysOnTop ? <Pin className="size-3.5 fill-current" /> : <PinOff className="size-3.5" />}
         </Button>
 
-        {/* History Toggle (in compact mode) */}
-        {!isWideScreen && (
+        {/* History Toggle (in mobile/compact mode) */}
+        {(!isWideScreen || isCompact) && (
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={onToggleHistory}
-            className={`h-7 w-7 transition-colors ${
+            className={`h-7 w-7 transition-colors rounded-lg ${
               historyOpen
                 ? "text-primary bg-primary/10 hover:bg-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -257,7 +246,7 @@ export function TitleBar({
           variant="ghost"
           size="icon-sm"
           onClick={onToggleSound}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
           title={soundEnabled ? "Mute clicks" : "Enable sound clicks"}
         >
           {soundEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
@@ -268,31 +257,27 @@ export function TitleBar({
           variant="ghost"
           size="icon-sm"
           onClick={onToggleTheme}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
           title="Toggle Dark/Light Mode"
         >
           {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
         </Button>
 
-        {/* Native Windows Controls */}
-        <div className="ml-1 flex items-center">
+        {/* Subtle Divider */}
+        <div className="h-4 w-[1px] bg-border/60 mx-1" />
+
+        {/* Native Window Controls: Minimize & Close with comfortable spacing */}
+        <div className="flex items-center gap-1">
           <button
             onClick={handleMinimize}
-            className="flex h-7 w-9 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             title="Minimize"
           >
             <Minus className="size-3.5" />
           </button>
           <button
-            onClick={handleToggleMaximize}
-            className="flex h-7 w-9 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            title={isMaximized ? "Restore" : "Maximize"}
-          >
-            {isMaximized ? <Copy className="size-3" /> : <Square className="size-3" />}
-          </button>
-          <button
             onClick={handleClose}
-            className="flex h-7 w-9 items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-150"
             title="Close"
           >
             <X className="size-3.5" />
