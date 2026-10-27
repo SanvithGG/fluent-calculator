@@ -1,0 +1,26 @@
+# Node
+node_modules/
+dist/
+.pnpm-debug.log*
+
+# Rust / Cargo
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Tauri
+src-tauri/gen/
+
+# MSIX & Distribution
+dist-msix/
+*.pfx
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vscode/*
+!.vscode/extensions.json
+.idea/
