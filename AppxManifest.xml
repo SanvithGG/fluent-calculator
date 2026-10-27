@@ -6,14 +6,14 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="FluentCalculator"
-    Publisher="CN=FluentCalcDev"
+    Name="Annapurnabekrishivannaatb.FluentCalculator"
+    Publisher="CN=07EBE141-C5B6-4DAC-A282-A89B1A64E6F9"
     Version="1.0.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>Fluent Calculator</DisplayName>
-    <PublisherDisplayName>Fluent Apps</PublisherDisplayName>
+    <PublisherDisplayName>Annapurna bekri(shivanna) at bus stop</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <Description>Modern Fluent Calculator for Windows featuring Standard, Scientific, Programmer, Unit Converter, and Date Calculation modes.</Description>
   </Properties>
@@ -23,7 +23,7 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate" />
+    <Resource Language="en-us" />
   </Resources>
 
   <Applications>
