@@ -52,6 +52,13 @@ def main():
         resized.save(out_path)
         print(f"Saved {filename} ({size[0]}x{size[1]})")
 
+    # Generate Wide 310x150 Tile
+    wide_img = Image.new("RGBA", (310, 150), (15, 23, 42, 255))
+    icon_resized = src_img.resize((100, 100), Image.Resampling.LANCZOS)
+    wide_img.paste(icon_resized, ((310 - 100) // 2, (150 - 100) // 2), icon_resized)
+    wide_img.save(os.path.join(icons_dir, "Wide310x150Logo.png"))
+    print("Saved Wide310x150Logo.png (310x150)")
+
     # 3. Generate Multi-size Windows ICO file
     ico_path = os.path.join(icons_dir, "icon.ico")
     ico_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
