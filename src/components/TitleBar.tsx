@@ -124,8 +124,13 @@ export function TitleBar({
       data-tauri-drag-region
       className="flex h-11 w-full items-center justify-between border-b border-border/40 bg-background/85 px-3 select-none z-50 backdrop-blur-xl"
     >
-      {/* Left: Mode Picker */}
+      {/* Left: Brand Icon + Mode Picker */}
       <div className="relative flex items-center gap-2" data-tauri-drag-region>
+        <img
+          src="/src/assets/logo.png"
+          alt="Fluent Calculator"
+          className="size-5 rounded-md shadow-xs pointer-events-none"
+        />
         <button
           onClick={() => setModeMenuOpen(!modeMenuOpen)}
           className="flex items-center gap-2 rounded-lg px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors border border-border/40 shadow-xs"

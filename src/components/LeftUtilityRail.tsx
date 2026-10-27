@@ -67,6 +67,19 @@ export function LeftUtilityRail({
   return (
     <div className="flex h-full w-56 flex-col border-r border-border/40 bg-card/40 p-3 backdrop-blur-xl select-none justify-between overflow-y-auto">
       <div className="flex flex-col gap-4">
+        {/* Brand Header */}
+        <div className="flex items-center gap-2.5 px-2 py-1 border-b border-border/30 pb-3">
+          <img
+            src="/src/assets/logo.png"
+            alt="Fluent Calculator"
+            className="size-7 rounded-lg shadow-sm object-contain"
+          />
+          <div className="flex flex-col">
+            <span className="text-xs font-bold tracking-tight text-foreground leading-none">Fluent Calc</span>
+            <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">Windows 11 Studio</span>
+          </div>
+        </div>
+
         {/* Modes Section */}
         <div className="flex flex-col gap-1">
           <span className="px-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
