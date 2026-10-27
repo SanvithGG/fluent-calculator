@@ -1,7 +1,8 @@
 # PowerShell script to package Fluent Calculator into an MSIX for Microsoft Store / Sideloading
 param(
   [switch]$Release,
-  [switch]$SignForTesting
+  [switch]$SignForTesting,
+  [switch]$ForceRebuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,11 +36,13 @@ Set-Location $projectRoot
 
 $targetDir = "$projectRoot\src-tauri\target\debug"
 if ($Release) {
-  Write-Host "Building Release binary..." -ForegroundColor Yellow
-  cargo build --release --manifest-path "$projectRoot\src-tauri\Cargo.toml"
   $targetDir = "$projectRoot\src-tauri\target\release"
+  if ($ForceRebuild -or (-not (Test-Path "$targetDir\calculator.exe"))) {
+    Write-Host "Building Release binary..." -ForegroundColor Yellow
+    cargo build --release --manifest-path "$projectRoot\src-tauri\Cargo.toml"
+  }
 } else {
-  if (-not (Test-Path "$targetDir\calculator.exe")) {
+  if ($ForceRebuild -or (-not (Test-Path "$targetDir\calculator.exe"))) {
     Write-Host "Building Debug binary for fast testing..." -ForegroundColor Yellow
     cargo build --manifest-path "$projectRoot\src-tauri\Cargo.toml"
   }
