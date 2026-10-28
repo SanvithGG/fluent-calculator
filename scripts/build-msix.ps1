@@ -1,6 +1,6 @@
 # PowerShell script to package Fluent Calculator into an MSIX for Microsoft Store / Sideloading
 param(
-  [switch]$Release,
+  [switch]$Release = $true,
   [switch]$SignForTesting,
   [switch]$ForceRebuild
 )
@@ -34,15 +34,16 @@ Write-Host "Using Windows SDK from: $sdkPath" -ForegroundColor Green
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $projectRoot
 
-$targetDir = "$projectRoot\src-tauri\target\debug"
-if ($Release) {
-  $targetDir = "$projectRoot\src-tauri\target\release"
-  if ($ForceRebuild -or (-not (Test-Path "$targetDir\calculator.exe"))) {
-    Write-Host "Building Release binary..." -ForegroundColor Yellow
-    cargo build --release --manifest-path "$projectRoot\src-tauri\Cargo.toml"
-  }
-} else {
-  if ($ForceRebuild -or (-not (Test-Path "$targetDir\calculator.exe"))) {
+$targetDir = "$projectRoot\src-tauri\target\release"
+if (-not $Release) {
+  $targetDir = "$projectRoot\src-tauri\target\debug"
+}
+
+if ($ForceRebuild -or (-not (Test-Path "$targetDir\calculator.exe"))) {
+  if ($Release) {
+    Write-Host "Building production Release binary via Tauri CLI..." -ForegroundColor Yellow
+    pnpm tauri build --no-bundle
+  } else {
     Write-Host "Building Debug binary for fast testing..." -ForegroundColor Yellow
     cargo build --manifest-path "$projectRoot\src-tauri\Cargo.toml"
   }

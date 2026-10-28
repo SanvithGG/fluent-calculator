@@ -1,7 +1,7 @@
 {
   "name": "fluent-calculator",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Modern Fluent Calculator for Windows",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "tsx scripts/production-audit.ts",
     "preview": "vite preview",
     "tauri": "tauri",
-    "package:msix": "powershell -ExecutionPolicy Bypass -File ./scripts/build-msix.ps1"
+    "package:msix": "powershell -ExecutionPolicy Bypass -File ./scripts/build-msix.ps1 -Release"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
